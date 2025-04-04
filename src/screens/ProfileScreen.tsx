@@ -28,6 +28,7 @@ type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
   WaterReminder: undefined;
+  Camera: undefined;
   // Add other screens as needed
 };
 
@@ -499,6 +500,17 @@ function ProfileSettingsScreen() {
             <View style={styles.settingItemLeft}>
               <MaterialCommunityIcons name="cup-water" size={24} color={colors.text} />
               <Text style={[styles.settingItemText, { color: colors.text }]}>Water Reminder Settings</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.settingButton, { borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Camera')}
+          >
+            <View style={styles.settingItemLeft}>
+              <MaterialCommunityIcons name="camera" size={24} color={colors.text} />
+              <Text style={[styles.settingItemText, { color: colors.text }]}>Open Camera</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
           </TouchableOpacity>

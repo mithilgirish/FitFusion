@@ -1,4 +1,4 @@
-package com.anonymous.HealthApp
+package com.anonymous.FitFusion
 
 import android.os.Build
 import android.os.Bundle

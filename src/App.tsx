@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons'; // or any other icon library
 import { ThemeProvider } from './context/ThemeContext';
 import ChatBotScreen from './screens/ChatBotScreen';
@@ -8,9 +9,44 @@ import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import WorkoutScreen from './screens/WorkoutScreen';
 import WaterReminderScreen from './screens/WaterReminderScreen';
+import WorkoutTrackerScreen from './screens/WorkoutTrackerScreen';
 import { useTheme } from './context/ThemeContext'; // Assuming you have this hook
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+// Create a stack navigator for screens that we don't want in the tab bar
+const MainStack = () => {
+  const { colors } = useTheme();
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Stack.Screen 
+        name="TabNavigator" 
+        component={TabNavigator} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="WorkoutTracker" 
+        component={WorkoutTrackerScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal'
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const TabNavigator = () => {
   const { colors } = useTheme(); // Get theme colors
@@ -32,12 +68,13 @@ const TabNavigator = () => {
             iconName = focused ? 'fitness' : 'fitness-outline';
           } else if (route.name === 'Water') {
             iconName = focused ? 'water' : 'water-outline';
-          } else {
+          }else if (route.name === 'WorkoutTracker') {
+            iconName = focused ? 'barbell' : 'barbell-outline';
+          }
+          else {
             iconName = 'help-circle';
           }
           
-
-
           return <Ionicons name={iconName!} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.primary,
@@ -71,6 +108,11 @@ const TabNavigator = () => {
         options={{ title: 'Water Reminder' }}
       />
       <Tab.Screen 
+        name="WorkoutTracker" 
+        component={WorkoutTrackerScreen}
+        options={{ title: 'Workout Tracker' }}
+      />
+      <Tab.Screen 
         name="Chat" 
         component={ChatBotScreen} 
         options={{ title: 'Health Assistant' }}
@@ -80,8 +122,6 @@ const TabNavigator = () => {
         component={ProfileScreen} 
         options={{ title: 'My Profile' }}
       />
-      
-      {/* Add more screens as needed */}
     </Tab.Navigator>
   );
 };
@@ -90,7 +130,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <NavigationContainer>
-        <TabNavigator />
+        <MainStack />
       </NavigationContainer>
     </ThemeProvider>
   );

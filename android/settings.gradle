@@ -21,7 +21,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   }
 }
 
-rootProject.name = 'HealthApp'
+rootProject.name = 'FitFusion'
 
 dependencyResolutionManagement {
   versionCatalogs {

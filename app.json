@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "HealthApp",
-    "slug": "HealthApp",
+    "name": "FitFusion",
+    "slug": "FitFusion",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.HealthApp"
+      "bundleIdentifier": "com.anonymous.FitFusion"
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +33,7 @@
         "android.permission.health.READ_HYDRATION",
         "android.permission.health.WRITE_HYDRATION"
       ],
-      "package": "com.anonymous.HealthApp"
+      "package": "com.anonymous.FitFusion"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -51,6 +51,6 @@
         }
       ]
     ],
-    "scheme": "com.anonymous.HealthApp"
+    "scheme": "com.anonymous.FitFusion"
   }
 }

@@ -1,4 +1,4 @@
-package com.anonymous.HealthApp
+package com.anonymous.FitFusion
 
 import android.app.Application
 import android.content.res.Configuration
