@@ -1,9 +1,9 @@
-// App.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar, SafeAreaView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, StatusBar, SafeAreaView, Dimensions, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useHealthData } from '.././hooks/useHealthData';
-
+import {  useTheme } from '../context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface CardProps {
   title: string;
@@ -17,47 +17,62 @@ interface CardProps {
 const { width } = Dimensions.get('window');
 const cardWidth = width / 2 - 24;
 
-const Card = ({ title, value, subtitle, color, icon, children }: CardProps) => (
-  <View style={styles.cardWrapper}>
-    <LinearGradient
-      colors={color}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.cardGradient}
-    >
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          {icon && <Text style={styles.cardIcon}>{icon}</Text>}
-          <Text style={styles.cardTitle}>{title}</Text>
+const Card = ({ title, value, subtitle, color, icon, children }: CardProps) => {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <View style={styles.cardWrapper}>
+      <LinearGradient
+        colors={color}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={[styles.card, { 
+          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.15)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.4)'
+        }]}>
+          <View style={styles.cardHeader}>
+            {icon && <Text style={styles.cardIcon}>{icon}</Text>}
+            <Text style={[styles.cardTitle, { color: '#ffffff' }]}>{title}</Text>
+          </View>
+          <Text style={[styles.cardValue, { 
+            color: '#ffffff',
+            textShadowColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.3)'
+          }]}>{value}</Text>
+          {subtitle && <Text style={[styles.cardSubtitle, { color: 'rgba(255, 255, 255, 0.6)' }]}>{subtitle}</Text>}
+          {children}
         </View>
-        <Text style={styles.cardValue}>{value}</Text>
-        {subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
-        {children}
+      </LinearGradient>
+    </View>
+  );
+};
+
+const SleepStageBar = ({ stage, duration, totalDuration, color }: { stage: string; duration: number; totalDuration: number; color: string }) => {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <View style={styles.sleepStageContainer}>
+      <View style={styles.sleepStageLabel}>
+        <Text style={[styles.sleepStageText, { color: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>{stage}</Text>
+        <Text style={[styles.sleepStageDuration, { color: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>{duration.toFixed(1)}h</Text>
       </View>
-    </LinearGradient>
-  </View>
-);
-
-const SleepStageBar = ({ stage, duration, totalDuration, color }: { stage: string; duration: number; totalDuration: number; color: string }) => (
-  <View style={styles.sleepStageContainer}>
-    <View style={styles.sleepStageLabel}>
-      <Text style={styles.sleepStageText}>{stage}</Text>
-      <Text style={styles.sleepStageDuration}>{duration.toFixed(1)}h</Text>
+      <View style={[styles.sleepStageBarContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]}>
+        <View 
+          style={[
+            styles.sleepStageBar, 
+            { width: `${(duration / totalDuration) * 100}%`, backgroundColor: color }
+          ]} 
+        />
+      </View>
     </View>
-    <View style={styles.sleepStageBarContainer}>
-      <View 
-        style={[
-          styles.sleepStageBar, 
-          { width: `${(duration / totalDuration) * 100}%`, backgroundColor: color }
-        ]} 
-      />
-    </View>
-  </View>
-);
+  );
+};
 
-export default function App() {
+function AppContent() {
   const [date] = useState(new Date());
   const { steps, distance, floors, sleepHours, sleepStages } = useHealthData();
+  const { theme, toggleTheme, colors, isDark } = useTheme();
   
   const totalSleepStages = sleepStages ? 
     sleepStages.awake + sleepStages.light + sleepStages.deep + sleepStages.REM : 0;
@@ -71,16 +86,24 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={colors.statusBar} />
       <LinearGradient
-        colors={['#000428', '#004e92']}
+        colors={colors.backgroundGradient}
         style={styles.background}
       />
       <ScrollView style={styles.container}>
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>FitFusion</Text>
-          <Text style={styles.dateText}>{formatDate(date)}</Text>
+          <Text style={[
+            styles.title, 
+            { 
+              color: colors.text,
+              textShadowColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.25)'
+            }
+          ]}>FitFusion</Text>
+          <Text style={[styles.dateText, { color: colors.textSecondary }]}>{formatDate(date)}</Text>
+          
+     
         </View>
 
         <View style={styles.cardsContainer}>
@@ -88,28 +111,28 @@ export default function App() {
             title="STEPS" 
             value={steps.toLocaleString()}
             subtitle="GOAL: 10,000"
-            color={['#FF5F6D', '#FFC371']}
+            color={colors.cardGradients.steps}
             icon="👣"
           />
           <Card 
             title="DISTANCE" 
             value={`${(distance / 1000).toFixed(2)} km`}
             subtitle="KEEP MOVING"
-            color={['#4776E6', '#8E54E9']}
+            color={colors.cardGradients.distance}
             icon="🌐"
           />
           <Card 
             title="FLOORS" 
             value={floors.toString()}
             subtitle="ELEVATION GAINED"
-            color={['#00F260', '#0575E6']}
+            color={colors.cardGradients.floors}
             icon="🏢"
           />
           <Card 
             title="SLEEP" 
             value={`${sleepHours.toFixed(1)} hrs`}
             subtitle="SLEEP ANALYSIS"
-            color={['#834d9b', '#d04ed6']}
+            color={colors.cardGradients.sleep}
             icon="💤"
           >
             {sleepStages && (
@@ -123,13 +146,22 @@ export default function App() {
           </Card>
         </View>
 
-        <View style={styles.quoteBubble}>
-          <Text style={styles.quoteText}>
+        <View style={[styles.quoteBubble, { 
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'
+        }]}>
+          <Text style={[styles.quoteText, { color: colors.text }]}>
             "The future of health is here. Your body, quantified."
           </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+      <AppContent />
   );
 }
 
@@ -151,21 +183,27 @@ const styles = StyleSheet.create({
     marginTop: 40,
     marginBottom: 20,
     alignItems: 'center',
+    position: 'relative',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#ffffff',
     letterSpacing: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    textShadowRadius: 5,
   },
   dateText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 8,
+  },
+  themeToggle: {
+    position: 'absolute',
+    right: 20,
+    top: 8,
+    padding: 8,
+    borderRadius: 20,
   },
   cardsContainer: {
     padding: 16,
@@ -184,10 +222,8 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -200,22 +236,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '600',
     letterSpacing: 1,
   },
   cardValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
     marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 3,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
     letterSpacing: 0.5,
   },
   sleepStagesContainer: {
@@ -231,16 +263,13 @@ const styles = StyleSheet.create({
   },
   sleepStageText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
   sleepStageDuration: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   sleepStageBarContainer: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -251,14 +280,11 @@ const styles = StyleSheet.create({
   quoteBubble: {
     margin: 16,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   quoteText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
     fontStyle: 'italic',
     textAlign: 'center',
   },

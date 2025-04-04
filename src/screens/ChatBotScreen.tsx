@@ -10,12 +10,15 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GEMINI_API_KEY } from '@env';
 import Markdown from 'react-native-markdown-display';
 import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Message {
   text: string;
@@ -89,7 +92,7 @@ const renderMessage = (text: string, isUser: boolean, colors: any) => {
 };
 
 export default function ChatBotScreen({ initialTopic, healthData }: ChatBotScreenProps) {
-  const { theme, toggleTheme, colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -290,150 +293,121 @@ export default function ChatBotScreen({ initialTopic, healthData }: ChatBotScree
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>AI Health Assistant</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={colors.statusBar} />
+      <LinearGradient
+        colors={colors.backgroundGradient}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Health Assistant</Text>
+        <TouchableOpacity
+          style={[
+            styles.headerButton,
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)' }
+          ]}
+          onPress={() => {
+            setMessages([{
+              text: healthData 
+                ? "👋 Hello! I'm your AI health assistant. I have access to your latest health data and can provide personalized advice. How can I help you today?"
+                : "👋 Hello! I'm your AI health assistant. How can I help you today?",
+              isUser: false,
+              timestamp: new Date(),
+            }]);
+          }}
+        >
+          <MaterialCommunityIcons name="refresh" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      {error && (
+        <View style={[styles.errorContainer, { backgroundColor: colors.error }]}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => setError(null)}>
+            <MaterialCommunityIcons name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingContainer}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={scrollToBottom}
+        >
+          {messages.map((message, index) => (
+            <View
+              key={index}
+              style={[
+                styles.messageBubble,
+                message.isUser
+                  ? [styles.userMessage, { backgroundColor: colors.primary }]
+                  : [styles.aiMessage, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }],
+              ]}
+            >
+              {renderMessage(message.text, message.isUser, colors)}
+              <Text style={[
+                styles.timestamp, 
+                { color: message.isUser ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary }
+              ]}>
+                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+          ))}
+          {loading && (
+            <View
+              style={[
+                styles.messageBubble,
+                styles.aiMessage,
+                { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }
+              ]}
+            >
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.text }]}>
+                  Thinking...
+                </Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
+          <TextInput
+            style={[styles.input, { 
+              color: colors.text,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+            }]}
+            placeholder="Type your health question..."
+            placeholderTextColor={colors.textSecondary}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+          />
           <TouchableOpacity
-            style={styles.themeToggle}
-            onPress={toggleTheme}
+            style={[
+              styles.sendButton,
+              { backgroundColor: colors.primary },
+              !inputText.trim() && styles.sendButtonDisabled,
+            ]}
+            onPress={sendMessage}
+            disabled={!inputText.trim() || loading}
           >
             <MaterialCommunityIcons
-              name={theme === 'light' ? 'weather-night' : 'weather-sunny'}
+              name="send"
               size={24}
-              color={colors.text}
+              color="#fff"
             />
           </TouchableOpacity>
         </View>
-        {healthData && (
-          <TouchableOpacity 
-            style={[styles.dataIndicator, { backgroundColor: colors.card }]}
-            onPress={() => {
-              Alert.alert(
-                "Health Data Available",
-                "AI assistant has access to your health metrics:\n" + createHealthContext(),
-                [{ text: "OK" }]
-              );
-            }}
-          >
-            <MaterialCommunityIcons name="database-check" size={18} color={colors.primary} />
-            <Text style={[styles.dataIndicatorText, { color: colors.primary }]}>Health data connected</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView
-        ref={scrollViewRef}
-        style={[styles.messagesContainer, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.messagesContent}
-      >
-        {messages.map((message, index) => (
-          <View
-            key={index}
-            style={[
-              styles.messageContainer,
-              message.isUser ? styles.userMessage : styles.botMessage,
-            ]}
-          >
-            {!message.isUser && (
-              <View style={[styles.botAvatar, { backgroundColor: colors.card }]}>
-                <MaterialCommunityIcons name="robot" size={20} color={colors.primary} />
-              </View>
-            )}
-            <View style={[
-              styles.messageBubble,
-              message.isUser ? [styles.userMessageBubble, { backgroundColor: colors.primary }] : [styles.botMessageBubble, { backgroundColor: colors.card }]
-            ]}>
-              {renderMessage(message.text, message.isUser, colors)}
-              <Text style={[
-                styles.timestamp,
-                message.isUser ? styles.userTimestamp : styles.botTimestamp,
-                { color: message.isUser ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary }
-              ]}>
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
-              </Text>
-            </View>
-          </View>
-        ))}
-
-        {loading && (
-          <View style={[styles.loadingContainer, { backgroundColor: colors.card }]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.text }]}>AI is thinking...</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      <View style={[styles.suggestionContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        {messages.length > 0 && !loading && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity
-              style={[styles.suggestionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setInputText("How can I improve my daily step count?")}
-            >
-              <Text style={[styles.suggestionText, { color: colors.primary }]}>Improve steps</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.suggestionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setInputText("Give me a personalized workout plan")}
-            >
-              <Text style={[styles.suggestionText, { color: colors.primary }]}>Workout plan</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.suggestionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setInputText("How can I sleep better?")}
-            >
-              <Text style={[styles.suggestionText, { color: colors.primary }]}>Sleep tips</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.suggestionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setInputText("What's a healthy diet for my activity level?")}
-            >
-              <Text style={[styles.suggestionText, { color: colors.primary }]}>Diet advice</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-      </View>
-
-      <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <TextInput
-          style={[styles.input, { 
-            backgroundColor: colors.card,
-            color: colors.text,
-            borderColor: colors.border,
-          }]}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type your message..."
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          maxLength={1000}
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            !inputText.trim() && styles.sendButtonDisabled,
-            { backgroundColor: inputText.trim() ? colors.primary : colors.border }
-          ]}
-          onPress={sendMessage}
-          disabled={!inputText.trim() || loading}
-        >
-          <MaterialCommunityIcons
-            name="send"
-            size={24}
-            color={inputText.trim() ? '#fff' : colors.textSecondary}
-          />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -442,235 +416,144 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 16,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: 'bold',
   },
-  themeToggle: {
+  headerButton: {
     padding: 8,
     borderRadius: 20,
   },
-  dataIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  dataIndicatorText: {
-    fontSize: 14,
-    marginLeft: 6,
-    fontWeight: '500',
+  keyboardAvoidingContainer: {
+    flex: 1,
   },
   messagesContainer: {
     flex: 1,
   },
   messagesContent: {
     padding: 16,
-    paddingBottom: 24,
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    width: '100%',
-  },
-  userMessage: {
-    justifyContent: 'flex-end',
-  },
-  botMessage: {
-    justifyContent: 'flex-start',
-  },
-  botAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   messageBubble: {
-    maxWidth: '80%',
     padding: 12,
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    marginBottom: 8,
+    maxWidth: '80%',
     elevation: 1,
+    shadowColor: 'rgba(0, 0, 0, 0.1)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
   },
-  userMessageBubble: {
+  userMessage: {
+    alignSelf: 'flex-end',
     borderBottomRightRadius: 4,
   },
-  botMessageBubble: {
+  aiMessage: {
+    alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   timestamp: {
-    fontSize: 11,
-    marginTop: 6,
+    fontSize: 10,
+    marginTop: 4,
     alignSelf: 'flex-end',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-    marginLeft: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  suggestionContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-  },
-  suggestionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 1,
-  },
-  suggestionText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 12,
     borderTopWidth: 1,
-    alignItems: 'center',
   },
   input: {
     flex: 1,
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
-    fontSize: 16,
+    padding: 12,
+    borderRadius: 20,
     maxHeight: 100,
-    minHeight: 40,
-    borderWidth: 1,
+    fontSize: 16,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginLeft: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
   },
   sendButtonDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
+    opacity: 0.5,
   },
   errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 8,
+    marginHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
   },
   errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 24,
+    color: 'white',
+    flex: 1,
   },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
   },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
   },
   markdownBold: {
-    fontWeight: '700',
+    fontWeight: 'bold',
   },
   markdownItalic: {
     fontStyle: 'italic',
   },
   markdownList: {
     marginVertical: 8,
-    paddingLeft: 8,
   },
   markdownListIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 12,
   },
   markdownListContent: {
-    fontSize: 16,
-    lineHeight: 24,
+    flex: 1,
   },
   markdownHeading1: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginVertical: 16,
-  },
-  markdownHeading2: {
     fontSize: 20,
-    fontWeight: '600',
-    marginVertical: 12,
-  },
-  markdownHeading3: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginVertical: 10,
-  },
-  markdownParagraph: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontWeight: 'bold',
     marginVertical: 8,
   },
-  userTimestamp: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  markdownHeading2: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 6,
   },
-  botTimestamp: {
-    color: 'rgba(0, 0, 0, 0.5)',
+  markdownHeading3: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginVertical: 4,
+  },
+  markdownParagraph: {
+    marginVertical: 4,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
