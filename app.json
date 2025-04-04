@@ -29,7 +29,9 @@
         "android.permission.health.READ_HEIGHT",
         "android.permission.health.READ_WEIGHT",
         "android.permission.health.READ_EXERCISE",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.WRITE_HYDRATION"
       ],
       "package": "com.anonymous.HealthApp"
     },

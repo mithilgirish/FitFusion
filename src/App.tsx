@@ -7,6 +7,7 @@ import ChatBotScreen from './screens/ChatBotScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import WorkoutScreen from './screens/WorkoutScreen';
+import WaterReminderScreen from './screens/WaterReminderScreen';
 import { useTheme } from './context/ThemeContext'; // Assuming you have this hook
 
 const Tab = createBottomTabNavigator();
@@ -29,6 +30,8 @@ const TabNavigator = () => {
           }
           else if (route.name === 'Workout') {
             iconName = focused ? 'fitness' : 'fitness-outline';
+          } else if (route.name === 'Water') {
+            iconName = focused ? 'water' : 'water-outline';
           } else {
             iconName = 'help-circle';
           }
@@ -61,6 +64,11 @@ const TabNavigator = () => {
         name="Workout" 
         component={WorkoutScreen} 
         options={{ title: 'Workout Log' }}
+      />
+      <Tab.Screen 
+        name="Water" 
+        component={WaterReminderScreen} 
+        options={{ title: 'Water Reminder' }}
       />
       <Tab.Screen 
         name="Chat" 

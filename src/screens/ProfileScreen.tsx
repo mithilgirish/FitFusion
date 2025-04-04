@@ -19,7 +19,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useHealthData } from '../hooks/useHealthData';
+import { useWaterTracking } from '../hooks/useWaterTracking';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+// Add a type for the root stack param list
+type RootStackParamList = {
+  Home: undefined;
+  Profile: undefined;
+  WaterReminder: undefined;
+  // Add other screens as needed
+};
+
+// Define the type for the navigation prop
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface CardProps {
   title: string;
@@ -68,6 +81,8 @@ function ProfileSettingsScreen() {
   const [newWeight, setNewWeight] = useState('');
   const { theme, toggleTheme, colors, isDark } = useTheme();
   const { height, weight, getHealthData, setHeight, setWeight } = useHealthData();
+  const { settings: waterSettings, saveSettings: saveWaterSettings, consumedWater, refreshWaterData } = useWaterTracking();
+  const navigation = useNavigation<NavigationProp>();
   
   // User data state
   const [user, setUser] = useState({
@@ -91,6 +106,19 @@ function ProfileSettingsScreen() {
     }
   }, [isLoading]);
 
+  // Refresh water data when screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (!isLoading) {
+        // Refresh water data and health data
+        refreshWaterData();
+        getHealthData();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isLoading, refreshWaterData, getHealthData]);
+
   const toggleSwitch = (setting: string, value: boolean) => {
     switch(setting) {
       case 'notifications':
@@ -105,6 +133,13 @@ function ProfileSettingsScreen() {
           // Trigger health data refresh when toggling on
           syncHealthData();
         }
+        break;
+      case 'waterReminders':
+        const updatedWaterSettings = {
+          ...waterSettings,
+          isEnabled: value,
+        };
+        saveWaterSettings(updatedWaterSettings);
         break;
     }
   };
@@ -170,6 +205,11 @@ function ProfileSettingsScreen() {
 
   const handleCancelHealthDataEdit = () => {
     setIsEditingHealthData(false);
+  };
+
+  // Add a function to navigate to water reminders screen
+  const navigateToWaterReminders = () => {
+    navigation.navigate('WaterReminder');
   };
 
   if (isLoading) {
@@ -347,6 +387,30 @@ function ProfileSettingsScreen() {
                 <Text style={[styles.healthMetricDebug, { color: colors.textSecondary }]}>{debugWeight}</Text>
               </View>
             </View>
+            
+            <View style={[styles.healthMetricItem, { borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="cup-water" size={24} color={colors.primary} />
+              <View style={styles.healthMetricContent}>
+                <Text style={[styles.healthMetricLabel, { color: colors.text }]}>Water Intake</Text>
+                <Text style={[styles.healthMetricValue, { color: colors.text }]}>
+                  {waterSettings.isEnabled ? 
+                    `${consumedWater.toFixed(0)} / ${waterSettings.dailyTarget} ml` :
+                    'Reminders disabled'
+                  }
+                </Text>
+                <View style={styles.waterProgressBar}>
+                  <View 
+                    style={[
+                      styles.waterProgressFill, 
+                      { 
+                        width: `${Math.min((consumedWater / waterSettings.dailyTarget) * 100, 100)}%`,
+                        backgroundColor: colors.primary
+                      }
+                    ]} 
+                  />
+                </View>
+              </View>
+            </View>
           </View>
         </View>
        
@@ -395,6 +459,19 @@ function ProfileSettingsScreen() {
               thumbColor={colors.switchThumb}
             />
           </View>
+          
+          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingItemLeft}>
+              <MaterialCommunityIcons name="cup-water" size={24} color={colors.text} />
+              <Text style={[styles.settingItemText, { color: colors.text }]}>Water Reminders</Text>
+            </View>
+            <Switch
+              value={waterSettings.isEnabled}
+              onValueChange={(value) => toggleSwitch('waterReminders', value)}
+              trackColor={{ false: colors.switchTrackOff, true: colors.primary }}
+              thumbColor={colors.switchThumb}
+            />
+          </View>
         </View>
         
         {/* Profile Actions Section */}
@@ -411,6 +488,17 @@ function ProfileSettingsScreen() {
             <View style={styles.settingItemLeft}>
               <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.text} />
               <Text style={[styles.settingItemText, { color: colors.text }]}>Edit Profile</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.settingButton, { borderColor: colors.border }]}
+            onPress={navigateToWaterReminders}
+          >
+            <View style={styles.settingItemLeft}>
+              <MaterialCommunityIcons name="cup-water" size={24} color={colors.text} />
+              <Text style={[styles.settingItemText, { color: colors.text }]}>Water Reminder Settings</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -706,6 +794,16 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  waterProgressBar: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#e0e0e0',
+    marginTop: 4,
+  },
+  waterProgressFill: {
+    height: '100%',
+    borderRadius: 5,
   },
 });
 
