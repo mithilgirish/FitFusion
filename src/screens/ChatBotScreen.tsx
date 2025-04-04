@@ -19,6 +19,7 @@ import { GEMINI_API_KEY } from '@env';
 import Markdown from 'react-native-markdown-display';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useHealthData, WorkoutData } from '../hooks/useHealthData';
 
 interface Message {
   text: string;
@@ -28,9 +29,12 @@ interface Message {
 
 interface HealthData {
   steps: number;
-  distance: string;
+  distance: number;
   floors: number;
-  sleepHours: string;
+  sleepHours: number;
+  height: number;
+  weight: number;
+  workouts: WorkoutData[];
   sleepStages?: {
     REM: number;
     deep: number;
@@ -41,7 +45,6 @@ interface HealthData {
 
 interface ChatBotScreenProps {
   initialTopic?: string;
-  healthData?: HealthData;
 }
 
 // Initialize Gemini with error handling
@@ -91,84 +94,154 @@ const renderMessage = (text: string, isUser: boolean, colors: any) => {
   );
 };
 
-export default function ChatBotScreen({ initialTopic, healthData }: ChatBotScreenProps) {
+export default function ChatBotScreen({ initialTopic }: ChatBotScreenProps) {
   const { colors, isDark } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const healthData = useHealthData();
+  const healthDataRef = useRef(healthData);
+
+  // Update the ref when healthData changes, but don't trigger re-renders
+  useEffect(() => {
+    healthDataRef.current = healthData;
+  }, [healthData]);
 
   // Set up initial message with user's health context if available
   useEffect(() => {
     const welcomeMessage: Message = {
-      text: healthData 
-        ? "👋 Hello! I'm your AI health assistant. I have access to your latest health data and can provide personalized advice. How can I help you today?"
-        : "👋 Hello! I'm your AI health assistant. How can I help you today?",
+      text: "👋 Hello! I'm your AI health assistant. I have access to your latest health data and can provide personalized advice. How can I help you today?",
       isUser: false,
       timestamp: new Date(),
     };
     
     setMessages([welcomeMessage]);
-    
-    // If initialTopic is provided, simulate a user query based on that topic
+  }, []);
+  
+  // Handle initial topic separately
+  useEffect(() => {
     if (initialTopic) {
       setTimeout(() => {
+        const data = healthDataRef.current;
         const topicMap: { [key: string]: string } = {
-          "steps": `I took ${healthData?.steps || 'some'} steps today. Can you analyze this and give me feedback?`,
-          "walking distance": `I walked ${healthData?.distance || 'some'} km today. Is this enough?`,
-          "stair climbing": `I climbed ${healthData?.floors || 'some'} floors today. Is this good exercise?`,
-          "sleep": `I slept ${healthData?.sleepHours || 'some'} hours last night. How can I improve my sleep quality?`
+          "steps": `I took ${data.steps || 0} steps today. Can you analyze this and give me feedback?`,
+          "walking distance": `I walked ${data.distance ? (data.distance / 1000).toFixed(2) : 0} km today. Is this enough?`,
+          "stair climbing": `I climbed ${data.floors || 0} floors today. Is this good exercise?`,
+          "sleep": `I slept ${data.sleepHours ? data.sleepHours.toFixed(1) : 0} hours last night. How can I improve my sleep quality?`,
+          "workouts": `Here's my workout history. Can you analyze my recent workouts and suggest improvements?`,
+          "weight": `My weight is ${data.weight ? data.weight.toFixed(1) : 'unknown'} kg and my height is ${data.height ? (data.height * 100).toFixed(0) : 'unknown'} cm. Is this healthy?`
         };
         
         const query = topicMap[initialTopic] || `Can you tell me more about ${initialTopic}?`;
         setInputText(query);
+        
+        // Automatically send the message after setting input text
+        const userMessage: Message = {
+          text: query,
+          isUser: true,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
+        handleSendMessage(query);
       }, 500);
     }
-  }, [initialTopic, healthData]);
-
+  }, [initialTopic]); // Remove healthData from dependencies
+  
   // Create a context string from health data
   const createHealthContext = () => {
-    if (!healthData) return "";
-    
+    const data = healthDataRef.current;
     let context = "My current health data:\n";
-    context += `- Steps today: ${healthData.steps}\n`;
-    context += `- Distance walked: ${healthData.distance} km\n`;
-    context += `- Floors climbed: ${healthData.floors}\n`;
-    context += `- Sleep duration: ${healthData.sleepHours} hours\n`;
     
-    if (healthData.sleepStages) {
+    // Basic metrics
+    context += `- Steps today: ${data.steps || 0}\n`;
+    context += `- Distance walked: ${data.distance ? (data.distance / 1000).toFixed(2) : 0} km\n`;
+    context += `- Floors climbed: ${data.floors || 0}\n`;
+    context += `- Sleep duration: ${data.sleepHours ? data.sleepHours.toFixed(1) : 0} hours\n`;
+    
+    // Height and weight if available
+    if (data.height) {
+      const heightCm = (data.height * 100).toFixed(1);
+      context += `- Height: ${heightCm} cm\n`;
+    }
+    
+    if (data.weight) {
+      context += `- Weight: ${data.weight.toFixed(1)} kg\n`;
+      
+      // Calculate BMI if both height and weight are available
+      if (data.height) {
+        const bmi = (data.weight / (data.height * data.height)).toFixed(1);
+        context += `- BMI: ${bmi}\n`;
+      }
+    }
+    
+    // Sleep stages breakdown
+    if (data.sleepStages) {
       context += "- Sleep stages breakdown:\n";
-      context += `  - REM sleep: ${healthData.sleepStages.REM.toFixed(1)} hours\n`;
-      context += `  - Deep sleep: ${healthData.sleepStages.deep.toFixed(1)} hours\n`;
-      context += `  - Light sleep: ${healthData.sleepStages.light.toFixed(1)} hours\n`;
-      context += `  - Awake time: ${healthData.sleepStages.awake.toFixed(1)} hours\n`;
+      context += `  - REM sleep: ${data.sleepStages.REM.toFixed(1)} hours\n`;
+      context += `  - Deep sleep: ${data.sleepStages.deep.toFixed(1)} hours\n`;
+      context += `  - Light sleep: ${data.sleepStages.light.toFixed(1)} hours\n`;
+      context += `  - Awake time: ${data.sleepStages.awake.toFixed(1)} hours\n`;
+    }
+    
+    // Workout data (recent workouts)
+    if (data.workouts && data.workouts.length > 0) {
+      context += "\nRecent workout history:\n";
+      
+      // Get the last 5 workouts for context
+      const recentWorkouts = data.workouts.slice(0, 5);
+      
+      recentWorkouts.forEach((workout, index) => {
+        context += `- Workout ${index + 1}: ${workout.name} (${workout.type})\n`;
+        context += `  - Date: ${workout.date}\n`;
+        context += `  - Duration: ${workout.duration} minutes\n`;
+        context += `  - Calories burned: ${workout.calories} cal\n`;
+        if (workout.distance) {
+          context += `  - Distance: ${workout.distance} km\n`;
+        }
+      });
+      
+      // Calculate weekly totals
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Start from Sunday
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const weeklyWorkouts = data.workouts.filter(workout => {
+        const workoutDate = new Date(workout.date);
+        return workoutDate >= startOfWeek;
+      });
+      
+      const totalWorkouts = weeklyWorkouts.length;
+      const totalDuration = weeklyWorkouts.reduce((sum, workout) => sum + workout.duration, 0);
+      const totalCalories = weeklyWorkouts.reduce((sum, workout) => sum + workout.calories, 0);
+      
+      context += "\nWeekly workout summary:\n";
+      context += `- Total workouts this week: ${totalWorkouts}\n`;
+      context += `- Total active minutes: ${totalDuration}\n`;
+      context += `- Total calories burned: ${totalCalories}\n`;
     }
     
     return context;
   };
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || loading) return;
+  // Handle message sending separate from the component function
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || loading) return;
     if (!genAI) {
       setError("AI service is not initialized. Please check your API key.");
       return;
     }
 
-    const userMessage: Message = {
-      text: inputText.trim(),
-      isUser: true,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setLoading(true);
     setError(null);
 
     try {
       // Create our prompt with health context
-      let prompt = inputText.trim();
+      let prompt = text.trim();
       const healthContext = createHealthContext();
       
       if (healthContext) {
@@ -242,19 +315,24 @@ export default function ChatBotScreen({ initialTopic, healthData }: ChatBotScree
     }
   };
 
+  const sendMessage = () => {
+    if (!inputText.trim() || loading) return;
+    
+    const userMessage: Message = {
+      text: inputText.trim(),
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    handleSendMessage(inputText);
+  };
+
   const scrollToBottom = () => {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollToEnd({ animated: true });
     }
   };
-
-  // Handle automatic sending of the first message when initialTopic is set
-  useEffect(() => {
-    if (inputText && initialTopic) {
-      sendMessage();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputText, initialTopic]);
 
   // Optimized scrollToBottom whenever messages change
   useEffect(() => {
@@ -309,9 +387,7 @@ export default function ChatBotScreen({ initialTopic, healthData }: ChatBotScree
           ]}
           onPress={() => {
             setMessages([{
-              text: healthData 
-                ? "👋 Hello! I'm your AI health assistant. I have access to your latest health data and can provide personalized advice. How can I help you today?"
-                : "👋 Hello! I'm your AI health assistant. How can I help you today?",
+              text: "👋 Hello! I'm your AI health assistant. I have access to your latest health data and can provide personalized advice. How can I help you today?",
               isUser: false,
               timestamp: new Date(),
             }]);

@@ -3,6 +3,11 @@ import { useColorScheme } from 'react-native';
 
 // Define the theme color types
 type ThemeColors = {
+  buttonSecondaryText: ColorValue | undefined;
+  accent: string | OpaqueColorValue | undefined;
+  switchTrackOff: ColorValue | null | undefined;
+  switchThumb: ColorValue | undefined;
+  textTertiary: ColorValue | undefined;
   background: string;
   surface: string;
   primary: string;
