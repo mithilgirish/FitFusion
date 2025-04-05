@@ -11,32 +11,31 @@ import {
   RefreshControl,
   Alert
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useHealthData, WorkoutData } from '../hooks/useHealthData';
+import Background from '../components/Background';
+import Header from '../components/Header';
+import Card from '../components/Card';
+import Button from '../components/Button';
 
 interface WorkoutLogItemProps {
   workout: WorkoutData;
   onPress: () => void;
-  colors: any;
 }
 
-const WorkoutLogItem: React.FC<WorkoutLogItemProps> = ({ workout, onPress, colors }) => {
+const WorkoutLogItem: React.FC<WorkoutLogItemProps> = ({ workout, onPress }) => {
+  const { colors } = useTheme();
+  
   return (
-    <TouchableOpacity 
-      style={[styles.workoutItem, { backgroundColor: colors.card }]} 
-      onPress={onPress}
-      activeOpacity={0.9}
-    >
-      <LinearGradient
-        colors={[colors.primary, colors.secondary]}
-        style={styles.workoutGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={styles.workoutAnimatedContainer}>
+      <Card
+        title={workout.name}
+        subtitle={workout.date}
+        gradient={colors.cardGradients.workout}
+        onPress={onPress}
+        animated={false}
       >
-        <Text style={styles.workoutTitle}>{workout.name}</Text>
-        <Text style={styles.workoutDate}>{workout.date}</Text>
         <View style={styles.workoutDetails}>
           <View style={styles.workoutStat}>
             <MaterialCommunityIcons name="clock-outline" size={16} color="#fff" />
@@ -53,13 +52,51 @@ const WorkoutLogItem: React.FC<WorkoutLogItemProps> = ({ workout, onPress, color
             </View>
           )}
         </View>
-      </LinearGradient>
-    </TouchableOpacity>
+      </Card>
+    </View>
   );
 };
 
-export default function WorkoutTrackingScreen({ navigation }: any) {
-  const { theme, toggleTheme, colors, isDark } = useTheme();
+const WorkoutTypeButton: React.FC<{
+  type: { id: string; name: string; icon: string };
+  isSelected: boolean;
+  onPress: () => void;
+}> = ({ type, isSelected, onPress }) => {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <View>
+      <TouchableOpacity 
+        key={type.id} 
+        style={[
+          styles.workoutTypeItem, 
+          { 
+            backgroundColor: isSelected 
+              ? colors.primary 
+              : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+          }
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons 
+          name={type.icon as keyof typeof MaterialCommunityIcons.glyphMap} 
+          size={24} 
+          color={isSelected ? '#fff' : colors.text} 
+        />
+        <Text style={[
+          styles.workoutTypeText, 
+          { color: isSelected ? '#fff' : colors.text }
+        ]}>
+          {type.name}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export default function WorkoutScreen({ navigation }: any) {
+  const { colors, isDark } = useTheme();
   const { workouts, getWorkoutData } = useHealthData();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +104,7 @@ export default function WorkoutTrackingScreen({ navigation }: any) {
   
   // Workout types mapped from actual data
   const workoutTypes = [
+    { id: '0', name: 'All', icon: 'view-dashboard' },
     { id: '1', name: 'Running', icon: 'run' },
     { id: '2', name: 'Cycling', icon: 'bike' },
     { id: '3', name: 'Swimming', icon: 'swim' },
@@ -74,7 +112,6 @@ export default function WorkoutTrackingScreen({ navigation }: any) {
     { id: '5', name: 'Yoga', icon: 'meditation' },
     { id: '6', name: 'Walking', icon: 'walk' },
     { id: '7', name: 'Hiking', icon: 'hiking' },
-    { id: '8', name: 'Other', icon: 'dots-horizontal' },
   ];
 
   useEffect(() => {
@@ -107,11 +144,12 @@ export default function WorkoutTrackingScreen({ navigation }: any) {
   };
 
   const addWorkout = () => {
-    navigation.navigate('AddWorkout');
+    navigation.navigate('WorkoutTracker');
   };
 
   const viewWorkoutDetails = (workout: WorkoutData) => {
-    navigation.navigate('WorkoutDetails', { workout });
+    // Navigate to workout details
+    console.log('View workout details:', workout);
   };
 
   // Sort workouts by date (most recent first)
@@ -143,219 +181,116 @@ export default function WorkoutTrackingScreen({ navigation }: any) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={colors.statusBar} />
-        <LinearGradient
-          colors={colors.backgroundGradient}
-          style={styles.background}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.text }]}>Loading workout data...</Text>
-        </View>
-      </SafeAreaView>
+      <Background pattern animated={false}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.text }]}>
+              Loading workout data...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </Background>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.statusBar} />
-      <LinearGradient
-        colors={colors.backgroundGradient}
-        style={styles.background}
-      />
-      
-      <View style={styles.headerContainer}>
-        <View style={styles.workoutHeader}>
-          <Text style={[styles.workoutScreenTitle, { color: colors.text }]}>
-            Workout Tracking
-          </Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity 
-              style={[styles.addWorkoutButton, { backgroundColor: colors.primary }]}
-              onPress={addWorkout}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-      
-      <View style={styles.workoutTypesContainer}>
+    <Background pattern animated={false}>
+      <SafeAreaView style={styles.safeArea}>
+        <Header 
+          title="Workout Tracking" 
+          rightIcon="add-circle-outline"
+          onRightPress={addWorkout}
+          animated={false}
+        />
+        
         <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.workoutTypesScrollView}
-        >
-          <TouchableOpacity 
-            key="all" 
-            style={[
-              styles.workoutTypeItem, 
-              { 
-                backgroundColor: selectedType === null 
-                  ? colors.primary 
-                  : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
-              }
-            ]}
-            onPress={() => setSelectedType(null)}
-            activeOpacity={0.7}
-          >
-            <View style={[
-              styles.workoutTypeIconContainer,
-              { 
-                backgroundColor: selectedType === null
-                  ? '#fff'
-                  : colors.primary
-              }
-            ]}>
-              <MaterialCommunityIcons 
-                name="format-list-bulleted" 
-                size={24} 
-                color={selectedType === null ? colors.primary : '#fff'} 
-              />
-            </View>
-            <Text style={[
-              styles.workoutTypeName, 
-              { 
-                color: selectedType === null 
-                  ? '#fff' 
-                  : colors.text
-              }
-            ]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {workoutTypes.map((type) => (
-            <TouchableOpacity 
-              key={type.id} 
-              style={[
-                styles.workoutTypeItem, 
-                { 
-                  backgroundColor: selectedType === type.name 
-                    ? colors.primary 
-                    : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
-                }
-              ]}
-              onPress={() => setSelectedType(selectedType === type.name ? null : type.name)}
-              activeOpacity={0.7}
-            >
-              <View style={[
-                styles.workoutTypeIconContainer,
-                { 
-                  backgroundColor: selectedType === type.name
-                    ? '#fff'
-                    : colors.primary
-                }
-              ]}>
-                <MaterialCommunityIcons 
-                  name={type.icon as any} 
-                  size={24} 
-                  color={selectedType === type.name ? colors.primary : '#fff'} 
-                />
-              </View>
-              <Text style={[
-                styles.workoutTypeName, 
-                { 
-                  color: selectedType === type.name 
-                    ? '#fff' 
-                    : colors.text
-                }
-              ]}>
-                {type.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-      
-      <View style={styles.workoutListHeader}>
-        <Text style={[styles.workoutListTitle, { color: colors.text }]}>
-          {selectedType ? `${selectedType} Workouts` : 'Recent Workouts'}
-        </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('WorkoutHistory')} activeOpacity={0.7}>
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>
-            View All
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {filteredWorkouts.length > 0 ? (
-          <>
-            {filteredWorkouts.map((workout) => (
-              <WorkoutLogItem 
-                key={workout.id} 
-                workout={workout} 
-                onPress={() => viewWorkoutDetails(workout)}
-                colors={colors}
-              />
-            ))}
-            
-            <View style={[
-              styles.workoutSummaryContainer, 
-              { 
-                backgroundColor: colors.surface,
-                borderColor: colors.border
-              }
-            ]}>
-              <Text style={[styles.workoutSummaryTitle, { color: colors.text }]}>
-                Weekly Summary
-              </Text>
-              <View style={styles.workoutSummaryStats}>
-                <View style={styles.workoutSummaryStat}>
-                  <MaterialCommunityIcons name="calendar-check" size={24} color={colors.primary} />
-                  <Text style={[styles.workoutSummaryValue, { color: colors.text }]}>{totalWorkouts}</Text>
-                  <Text style={[styles.workoutSummaryLabel, { color: colors.textSecondary }]}>Workouts</Text>
-                </View>
-                <View style={styles.workoutSummaryStat}>
-                  <MaterialCommunityIcons name="clock-outline" size={24} color={colors.primary} />
-                  <Text style={[styles.workoutSummaryValue, { color: colors.text }]}>{totalDuration}</Text>
-                  <Text style={[styles.workoutSummaryLabel, { color: colors.textSecondary }]}>Minutes</Text>
-                </View>
-                <View style={styles.workoutSummaryStat}>
-                  <MaterialCommunityIcons name="fire" size={24} color={colors.primary} />
-                  <Text style={[styles.workoutSummaryValue, { color: colors.text }]}>{totalCalories}</Text>
-                  <Text style={[styles.workoutSummaryLabel, { color: colors.textSecondary }]}>Calories</Text>
-                </View>
-              </View>
-            </View>
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons 
-              name="weight-lifter" 
-              size={48} 
-              color={colors.textSecondary} 
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
-            <Text style={[styles.emptyStateText, { color: colors.text }]}>
-              No workouts found
-            </Text>
-            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-              {selectedType ? `You haven't logged any ${selectedType} workouts yet` : 'Add your first workout to get started'}
-            </Text>
-            <TouchableOpacity 
-              style={[styles.addFirstWorkoutButton, { backgroundColor: colors.primary }]}
-              onPress={addWorkout}
-              activeOpacity={0.8}
+          }
+        >
+          {/* Weekly Summary Card */}
+          <View>
+            <Card
+              title="WEEKLY SUMMARY"
+              gradient={colors.cardGradients.default}
+              animated={false}
             >
-              <Text style={styles.addFirstWorkoutButtonText}>Add Workout</Text>
-            </TouchableOpacity>
+              <View style={styles.weeklySummary}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{totalWorkouts}</Text>
+                  <Text style={styles.summaryLabel}>Workouts</Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{totalDuration}</Text>
+                  <Text style={styles.summaryLabel}>Minutes</Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{totalCalories}</Text>
+                  <Text style={styles.summaryLabel}>Calories</Text>
+                </View>
+              </View>
+            </Card>
           </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          
+          {/* Workout Type Filters */}
+          <View style={styles.workoutTypesContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.workoutTypesScrollView}
+            >
+              {workoutTypes.map((type) => (
+                <WorkoutTypeButton 
+                  key={type.id}
+                  type={type}
+                  isSelected={selectedType === (type.id === '0' ? null : type.name)}
+                  onPress={() => setSelectedType(type.id === '0' ? null : type.name)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          
+          {/* Workout List */}
+          <View style={styles.workoutList}>
+            {filteredWorkouts.length > 0 ? (
+              filteredWorkouts.map((workout, index) => (
+                <WorkoutLogItem 
+                  key={`${workout.id}-${index}`}
+                  workout={workout}
+                  onPress={() => viewWorkoutDetails(workout)}
+                />
+              ))
+            ) : (
+              <Card
+                title="No workouts found"
+                subtitle="Try adding a new workout or changing your filter"
+                gradient={colors.cardGradients.default}
+                animated={false}
+              />
+            )}
+          </View>
+          
+          <View style={styles.addWorkoutContainer}>
+            <Button
+              title="Add New Workout"
+              onPress={addWorkout}
+              variant="gradient"
+              gradient={colors.cardGradients.workout}
+              icon={<MaterialCommunityIcons name="plus" size={20} color="#fff" />}
+              animated={false}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Background>
   );
 }
 
@@ -363,15 +298,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
   container: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -383,12 +312,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   headerContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 16,
   },
   workoutHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
   workoutScreenTitle: {
@@ -403,171 +333,66 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    justifyContent: 'center',
   },
   workoutTypesContainer: {
-    marginBottom: 16,
+    marginVertical: 16,
   },
   workoutTypesScrollView: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   workoutTypeItem: {
-    marginRight: 12,
-    padding: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.00,
-    elevation: 1,
-  },
-  workoutTypeIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  workoutTypeName: {
-    fontWeight: '600',
-  },
-  workoutListHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginHorizontal: 4,
+  },
+  workoutTypeText: {
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  workoutList: {
+    marginTop: 8,
+  },
+  workoutAnimatedContainer: {
     marginBottom: 8,
-  },
-  workoutListTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  viewAllText: {
-    fontWeight: '600',
-  },
-  scrollViewContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  workoutItem: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.23,
-    shadowRadius: 2.62,
-    elevation: 4,
-  },
-  workoutGradient: {
-    padding: 16,
-    borderRadius: 16,
-  },
-  workoutTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  workoutDate: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 12,
   },
   workoutDetails: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    flexWrap: 'wrap',
+    marginTop: 8,
   },
   workoutStat: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
-    marginBottom: 4,
   },
   workoutStatText: {
     color: '#fff',
     marginLeft: 4,
-    fontSize: 14,
+    fontWeight: '500',
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    marginTop: 20,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-  },
-  emptyStateSubtext: {
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  addFirstWorkoutButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  addFirstWorkoutButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  workoutSummaryContainer: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  workoutSummaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  workoutSummaryStats: {
+  weeklySummary: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    marginVertical: 8,
   },
-  workoutSummaryStat: {
+  summaryItem: {
     alignItems: 'center',
   },
-  workoutSummaryLabel: {
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  summaryLabel: {
     fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 4,
   },
-  workoutSummaryValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 4,
+  addWorkoutContainer: {
+    marginVertical: 24,
   },
 });
